@@ -29,6 +29,9 @@ describe "Kyoto Tycoon Messages" do
     @single_get_packed = [0xBA, 0, 1, 0, "mykey".bytesize, "mykey"].pack("CNNnNa*")
     @multiple_get_packed = [0xBA, 0, 3, [0]*3, "mykey1".bytesize, "mykey2".bytesize, "mykey3".bytesize,
                             "mykey1", "mykey2", "mykey3"].flatten.pack("CNNnnnNNNa*a*a*")
+    @single_remove_packed = [0xB9, 0, 1, 0, "mykey".bytesize, "mykey"].pack("CNNnNa*")
+    @multiple_remove_packed = [0xB9, 0, 3, [0]*3, "mykey1".bytesize, "mykey2".bytesize, "mykey3".bytesize,
+                            "mykey1", "mykey2", "mykey3"].flatten.pack("CNNnnnNNNa*a*a*")
   end
   
   it "Should generate a set_bulk message properly with one key/value pair" do
@@ -58,9 +61,20 @@ describe "Kyoto Tycoon Messages" do
     msg.should be_instance_of(EM::Tycoon::Protocol::Binary::GetMessage)
     msg.data.should == @multiple_get_packed
   end
-
   
   it "Should parse a get_bulk reply properly" do
+  end
+  
+  it "Should generate a remove_bulk message properly with one key" do
+    msg = EM::Tycoon::Protocol::Message.generate(:remove, "mykey")
+    msg.should be_instance_of(EM::Tycoon::Protocol::Binary::RemoveMessage)
+    msg.data.should == @single_remove_packed
+  end
+  
+  it "Should generate a remove_bulk message properly with multiple keys" do
+    msg = EM::Tycoon::Protocol::Message.generate(:remove, ["mykey1","mykey2","mykey3"])
+    msg.should be_instance_of(EM::Tycoon::Protocol::Binary::RemoveMessage)
+    msg.data.should == @multiple_remove_packed
   end
   
   it "Should parse an error reply properly" do
