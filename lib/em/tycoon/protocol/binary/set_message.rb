@@ -4,12 +4,11 @@ module EM
       module Binary
         class SetMessage < EM::Tycoon::Protocol::Message
           
-          def initialize(type,data,opts={})
+          def initialize(data={},opts={})
             super(:set,data)
-            generate_set_array(data,opts)
           end
           
-          def generate_set_array(data, opts={})
+          def self.generate(data,opts={})
             raise ArgumentError.new("Unsupported data type : #{data.class.name}") unless data.kind_of?(Hash)
             msg_array = [MAGIC[:set]]
             optflags = 0
@@ -43,9 +42,9 @@ module EM
             msg_array += xts
             msg_array += keys
             msg_array += values
-            @data = msg_array.pack("CNN#{'n'*keys.length}NN#{'H*'*keys.length}#{'a*'*(keys.length*2)}")
-            return self
+            return msg_array.pack("CNN#{'n'*keys.length}NN#{'H*'*keys.length}#{'a*'*(keys.length*2)}")
            end
+           
         end 
       end     
     end

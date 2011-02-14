@@ -3,12 +3,8 @@ module EM
     module Protocol  
       module Binary
         class RemoveMessage < EM::Tycoon::Protocol::Message
-          def initialize(type,data,opts={})
-            super(:get,data)
-            generate_remove_array(data,opts)
-          end
           
-          def generate_remove_array(data,opts={})
+          def self.generate(data,opts={})
             data = [data.to_s] unless data.kind_of?(Array)
             msg_array = [MAGIC[:remove]]
             optflags = 0
@@ -22,8 +18,7 @@ module EM
             keys = data.collect {|k| key_sizes << k.to_s.bytesize; k.to_s}
             msg_array += key_sizes
             msg_array += keys
-            @data = msg_array.pack("CNN#{'n'*data.length}#{'N'*data.length}#{'a*'*data.length}")
-            return self
+            return msg_array.pack("CNN#{'n'*data.length}#{'N'*data.length}#{'a*'*data.length}")
           end
         end
       end

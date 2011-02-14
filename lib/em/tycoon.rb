@@ -17,8 +17,7 @@ module EM
   
     # Kyoto Tycoon binary protocol handler
     class Client < EM::Connection
-      include EM::Deferrable
-      
+
       def initialize
         super
       end
@@ -46,19 +45,23 @@ module EM
         begin
           msg = Protocol::Message.generate(:set, data, {:no_reply => !(block_given?)})
           send_data(msg.data)
+          @jobs << DefaultDeferrable.new if block_given?
         rescue Exception => e
           yield 0 if block_given?
         end
       end
       
       def get(keys=[],&cb)
+        raise ArgumentError.new("No block given") unless block_given?
         msg = Protocol::Message.generate(:get, keys)
         send_data(msg.data)
+        @jobs << DefaultDeferrable.new
       end
       
       def remove(keys=[],&cb)
         msg = Protocol::Message.generate(:remove, keys)
         send_data(msg.data)
+        @jobs << DefaultDeferrable.new if block_given?
       end
       
     end
