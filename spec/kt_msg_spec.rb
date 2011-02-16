@@ -52,9 +52,11 @@ describe "Kyoto Tycoon Messages" do
 
   
   it "Should parse a set_bulk reply properly" do
-    count = EM::Tycoon::Protocol::Message.parse(@set_bulk_reply)
-    count.should be_kind_of(Integer)
-    count.should == 2
+    msg = EM::Tycoon::Protocol::Message.message_for(@set_bulk_reply)
+    bytes_parsed = msg.parse(@set_bulk_reply)
+    bytes_parsed.should == @set_bulk_reply.bytesize
+    msg.item_count.should be_kind_of(Integer)
+    msg.item_count.should == 2
   end
   
   it "Should generate a get_bulk message properly with one key" do
@@ -68,9 +70,11 @@ describe "Kyoto Tycoon Messages" do
   end
   
   it "Should parse a get_bulk reply properly" do
-    msg = EM::Tycoon::Protocol::Message.parse(@get_bulk_reply)
-    msg.should be_instance_of(Hash)
-    msg.length.should == 3
+    msg = EM::Tycoon::Protocol::Message.message_for(@get_bulk_reply)
+    bytes_parsed = msg.parse(@get_bulk_reply)
+    bytes_parsed.should == @get_bulk_reply.bytesize
+    msg.item_count.should be_kind_of(Integer)
+    msg.item_count.should == 3
     @multiple_set_hsh.each_pair do |k,v|
       msg[k].should be_kind_of(Hash)
       msg[k][:value].should == v
@@ -89,9 +93,11 @@ describe "Kyoto Tycoon Messages" do
   end
   
   it "Should parse a remove_bulk reply properly" do
-    count = EM::Tycoon::Protocol::Message.parse(@remove_bulk_reply)
-    count.should be_kind_of(Integer)
-    count.should == 4
+    msg = EM::Tycoon::Protocol::Message.message_for(@remove_bulk_reply)
+    bytes_parsed = msg.parse(@remove_bulk_reply)
+    bytes_parsed.should == @remove_bulk_reply.bytesize
+    msg.item_count.should be_kind_of(Integer)
+    msg.item_count.should == 4
   end
   
   it "Should parse an error reply properly" do

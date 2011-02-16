@@ -3,7 +3,7 @@ require File.expand_path('../../spec_helper.rb', __FILE__)
 describe "Binary Protocol" do
   include EM::Spec
   
-  pending "Should support get and set operations with single KV pairs" do
+  it "Should support get and set operations with single KV pairs" do
     client = EM::Tycoon.connect(KT_OPTS)
     client.should be
     client.set("key1" => "value1") { |result|
