@@ -99,7 +99,8 @@ module EM
         end
         
         class << self
-                    
+          protected(:new)
+          
           def message_for(data)
             msgtype = msg_type_for(data)
             raise ArgumentError.new("Unknown magic byte 0x#{('%02X' % data[0])}") unless msgtype
