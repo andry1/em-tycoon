@@ -3,6 +3,10 @@ module EM
     module Protocol  
       module Binary
         class RemoveMessage < EM::Tycoon::Protocol::Message
+
+          def initialize(data=nil,opts={})
+            super(:remove,data)
+          end
           
           def self.generate(data,opts={})
             data = [data.to_s] unless data.kind_of?(Array)

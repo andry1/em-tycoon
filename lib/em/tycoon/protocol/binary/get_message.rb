@@ -26,6 +26,11 @@ module EM
             return msg_array.pack("CNN#{'n'*data.length}#{'N'*data.length}#{'a*'*data.length}")
           end
 
+          def parse_header(data)
+            magic, hits = data.unpack("CN")
+            return 5
+          end
+
           def self.from_bytes(data)
             msg_hsh = {}
             magic, hits = data.unpack("CN")

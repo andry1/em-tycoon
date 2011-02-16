@@ -1,11 +1,12 @@
 require 'eventmachine'
+require_relative 'tycoon/protocol/parser'
 
 module EM
   # EventMachine Kyoto Tycoon Driver
   # Uses Kyoto Tycoon's binary protocol for increased efficiency (see "Binary Protocol" at http://fallabs.com/kyototycoon/spex.html#protocol)
   module Tycoon
-  
     DEFAULT_OPTS = {:host => '127.0.0.1', :port => 1978}
+    REQUEST_TIMEOUT = 2 # Timeout requests after 2 seconds
   
     # Connect to a Kyoto Tycoon host, supported options are:
     # * :host => host name or IP address of ktserver instance (default '127.0.0.1')
@@ -17,7 +18,7 @@ module EM
   
     # Kyoto Tycoon binary protocol handler
     class Client < EM::Connection
-
+      
       def initialize
         super
       end
@@ -27,6 +28,10 @@ module EM
       end
     
       def receive_data(data)
+        bytes_parsed = 0
+        while bytes_parsed < data.bytesize
+          bytes_parsed += @jobs.first.parse_chunk(data[bytes_parsed..-1])
+        end
       end
       
       def unbind
@@ -42,26 +47,50 @@ module EM
       # on completion, the callback block will be called (if provided) with the number of records stored as returned
       # by Kyoto Tycoon.  If no callback is specified, the no-reply option will be passed to Kyoto Tycoon
       def set(data={},&cb)
-        begin
-          msg = Protocol::Message.generate(:set, data, {:no_reply => !(block_given?)})
-          send_data(msg.data)
-          @jobs << DefaultDeferrable.new if block_given?
-        rescue Exception => e
-          yield 0 if block_given?
+        msg = Protocol::Message.generate(:set, data, {:no_reply => !(block_given?)})
+        send_data(msg)
+        if block_given?
+          job = Protocol::Parser.new(REQUEST_TIMEOUT)
+          job.callback {
+            cb.call(@jobs.shift.result) if block_given?
+          }
+          job.errback {
+            @jobs.shift
+            cb.call(nil) if block_given?
+          }
+          @jobs << job
         end
       end
       
       def get(keys=[],&cb)
         raise ArgumentError.new("No block given") unless block_given?
         msg = Protocol::Message.generate(:get, keys)
-        send_data(msg.data)
-        @jobs << DefaultDeferrable.new
+        send_data(msg)
+        job = Protocol::Parser.new(REQUEST_TIMEOUT)
+        job.callback {
+          cb.call(@jobs.shift.result) if block_given?
+        }
+        job.errback {
+          @jobs.shift
+          cb.call(nil) if block_given?
+        }
+        @jobs << Protocol::Parser.new(REQUEST_TIMEOUT)
       end
       
       def remove(keys=[],&cb)
         msg = Protocol::Message.generate(:remove, keys)
-        send_data(msg.data)
-        @jobs << DefaultDeferrable.new if block_given?
+        send_data(msg)
+        if block_given?
+          job = Protocol::Parser.new(REQUEST_TIMEOUT)
+          job.callback {
+            cb.call(@jobs.shift.result) if block_given?
+          }
+          job.errback {
+            @jobs.shift
+            cb.call(nil) if block_given?
+          }
+          @jobs << job
+        end
       end
       
     end
