@@ -16,7 +16,7 @@ module EM
           :no_reply => false
         }
         NO_EXPIRATION_TIME = 0x7FFFFFFFFFFFFFFF
-        PARSE_PHASES=[:magic,:hits]
+        PARSE_PHASES=[:magic,:item_count]
         attr_reader :bytes_expected,:parsed,:buffer,:parse_phase
         # The human-readable symbol version of the KT message type, as defined in the keys of Message::MAGIC
         attr_accessor :type
@@ -42,6 +42,7 @@ module EM
           @data = data
           @bytes_per_record = 0
           @bytes_expected = 5
+          @keysize = @valuesize = 0
           @parsed = false
           @buffer = String.new
           @parse_phase = PARSE_PHASES.first
@@ -67,11 +68,11 @@ module EM
             @buffer << data[0..@bytes_expected]
             bytes_parsed = parse_chunk(@buffer)
             @bytes_expected -= bytes_parsed
+            @buffer = String.new
             if @bytes_expected == 0
               @parsed = true
-              @buffer = String.new
-            else
-              bytes_parsed += parse(@buffer[bytes_parsed..-1])
+            elsif (data.bytesize-bytes_parsed) > 0
+              bytes_parsed += parse(data[bytes_parsed..-1])
             end
             return bytes_parsed 
           end
@@ -91,11 +92,16 @@ module EM
             @magic = data.unpack("C").first
             bytes_parsed = 1
           end
+          @parse_phase = :item_count
           return bytes_parsed
         end
               
         def parsed?
           @parsed
+        end
+        
+        def [](key)
+          @data[key]
         end
         
         class << self

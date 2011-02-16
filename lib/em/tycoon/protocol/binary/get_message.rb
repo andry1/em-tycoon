@@ -9,10 +9,15 @@ module EM
             4 + # (uint32_t): (iteration): the size of the value.
             8   # (int64_t): (iteration): the expiration time.
           )
+          PARSE_PHASES=EM::Tycoon::Protocol::Message::PARSE_PHASES+[:header,:keys_and_values]
           HEADER_UNPACK_FORMATS=%w(n N N)
           
           def initialize(data={},opts={})
             super(:get,data)
+            @key_fmt = String.new
+            @value_fmt = String.new
+            @xts = Array.new
+            @db_idxs = Array.new
           end
           
           def self.generate(data,opts={})
@@ -26,43 +31,62 @@ module EM
             return msg_array.pack("CNN#{'n'*data.length}#{'N'*data.length}#{'a*'*data.length}")
           end
 
-          def parse_header(data)
-            magic, hits = data.unpack("CN")
-            return 5
-          end
-
-          def self.from_bytes(data)
+          def parse_chunk(data)
+            return 0 unless data && data.bytesize > 0
             msg_hsh = {}
-            magic, hits = data.unpack("CN")
-            bytes_parsed = 5
-            unpack_fmt = HEADER_UNPACK_FORMATS.inject("") {|fmt,part| fmt << "#{part}#{hits}"}
-            unpack_fmt << "H16"*hits
-            header_len = (hits*HEADER_BYTES_PER_RECORD)
-            sizes_and_xts = data[bytes_parsed..(header_len+bytes_parsed)].unpack(unpack_fmt)
-            bytes_parsed += header_len
-            db_idxs = []
-            xts = []
-            key_fmt = String.new
-            value_fmt = String.new
-            hits.times do |x|
-              db_idxs << sizes_and_xts[x]
-              key_size = sizes_and_xts[x+hits]
-              value_size = sizes_and_xts[x+(hits*2)]
-              xts << sizes_and_xts[x+(hits*3)].to_i(16)
-              key_fmt << "a#{key_size}"
-              value_fmt << "a#{value_size}"
+            bytes_parsed = 0
+            case parse_phase
+            when :magic,:item_count
+              @magic, @item_count = data.unpack("CN")
+              @parse_phase = :header
+              @bytes_expected += HEADER_BYTES_PER_RECORD*item_count
+              bytes_parsed = 5
+            when :header
+              unpack_fmt = HEADER_UNPACK_FORMATS.inject("") {|fmt,part| fmt << "#{part}#{item_count}"}
+              unpack_fmt << "H16"*item_count
+              header = data.unpack(unpack_fmt)
+              @db_idxs = []
+              @xts = []
+              @key_sizes = []
+              @value_sizes = []
+              key_fmt = String.new
+              value_fmt = String.new
+              item_count.times do |x|
+                @db_idxs << header[x]
+                @key_sizes << header[x+item_count]
+                @value_sizes << header[x+(item_count*2)]
+                @xts << header[x+(item_count*3)].to_i(16)
+                @key_fmt << "a#{@key_sizes.last}"
+                @value_fmt << "a#{@value_sizes.last}"
+              end
+              @bytes_expected += (keysize+valuesize)
+              bytes_parsed = (item_count*HEADER_BYTES_PER_RECORD)
+              @parse_phase = :keys_and_values
+            when :keys_and_values
+              keys_and_values = data.unpack(@key_fmt+@value_fmt)
+              @data = {}
+              item_count.times do |x|
+                xt = @xts.shift
+                @data[keys_and_values[x]] = {
+                  :dbidx => @db_idxs.shift,
+                  :value => keys_and_values[x+item_count],
+                  :xt => (xt == NO_EXPIRATION_TIME) ? nil : Time.at(xt)
+                }
+              end
+              bytes_parsed = (keysize+valuesize)
+              @parse_phase = :done
             end
-            keys_and_values = data[bytes_parsed..-1].unpack(key_fmt+value_fmt)
-            hits.times do |x|
-              xt = xts.shift
-              msg_hsh[keys_and_values[x]] = {
-                :dbidx => db_idxs.shift,
-                :value => keys_and_values[x+hits],
-                :xt => (xt == NO_EXPIRATION_TIME) ? nil : Time.at(xt)
-              }
-            end
-            return msg_hsh
+            return bytes_parsed
           end
+          
+          def keysize
+            @key_sizes.inject {|sum,x| sum += x}
+          end
+          
+          def valuesize
+            @value_sizes.inject {|sum,x| sum += x}
+          end
+          
         end
       end
     end
