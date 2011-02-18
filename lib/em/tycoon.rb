@@ -80,11 +80,10 @@ module EM
         msg = Protocol::Message.generate(:remove, keys)
         if block_given?
           job = Protocol::Parser.new(REQUEST_TIMEOUT)
-          job.callback {
-            cb.call(@jobs.shift.result) if block_given?
+          job.callback { |result|
+            cb.call(result) if block_given?
           }
-          job.errback {
-            @jobs.shift
+          job.errback { |result|
             cb.call(nil) if block_given?
           }
           @jobs << job

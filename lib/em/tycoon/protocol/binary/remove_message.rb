@@ -17,12 +17,12 @@ module EM
             end
             msg_array << optflags
             msg_array << data.length
-            msg_array += ([0]*data.length)
-            key_sizes = []
-            keys = data.collect {|k| key_sizes << k.to_s.bytesize; k.to_s}
-            msg_array += key_sizes
-            msg_array += keys
-            return msg_array.pack("CNN#{'n'*data.length}#{'N'*data.length}#{'a*'*data.length}")
+            data.each do |d|
+              msg_array << 0 # dbidx
+              msg_array << d.to_s.bytesize
+              msg_array << d
+            end
+            return msg_array.pack("CNN#{'nNa*'*data.length}")
           end
         end
       end

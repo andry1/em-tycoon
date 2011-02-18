@@ -10,7 +10,10 @@ describe "Binary Protocol" do
       result.should == 1
       client.get("key1") {|getresult|
         getresult["key1"][:value].should == "value1"
-        done
+        client.remove("key1") {|removeresult|
+          removeresult.should == 1
+          done
+        }
       }
     }
   end
@@ -31,7 +34,10 @@ describe "Binary Protocol" do
             getresult[k][:dbidx].should == 0
             getresult[k][:xt].should <= v[:xt]
           end
-          done
+          client.remove(kvs.keys) {|removeresult|
+            removeresult.should == 2
+            done
+          }
         }
       }
   end
