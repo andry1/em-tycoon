@@ -39,8 +39,10 @@ describe "Kyoto Tycoon Messages" do
     @single_get_packed = [0xBA, 0, 1, 0, "mykey".bytesize, "mykey"].pack("CNNnNa*")
     
     @single_remove_packed = [0xB9, 0, 1, 0, "mykey".bytesize, "mykey"].pack("CNNnNa*")
-    @multiple_remove_packed = [0xB9, 0, 3, [0]*3, "mykey1".bytesize, "my_longer_key2".bytesize, "mykey3".bytesize,
-                            "mykey1", "my_longer_key2", "mykey3"].flatten.pack("CNNnnnNNNa*a*a*")
+    @multiple_remove_packed = [0xB9, 0, 3,
+                               0, "mykey1".bytesize, "mykey1",
+                               0, "my_longer_key2".bytesize, "my_longer_key2",
+                               0, "mykey3".bytesize, "mykey3"].pack("CNNnNa*nNa*nNa*")
     @get_bulk_reply = @get_bulk_reply.pack("CN#{EM::Tycoon::Protocol::Message::KV_PACK_FMT*@multiple_set_hsh.keys.length}")
     @set_bulk_reply = [0xB8, 2].pack("CN")
     @remove_bulk_reply = [0xB9, 4].pack("CN")
