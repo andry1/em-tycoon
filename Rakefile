@@ -13,7 +13,15 @@ end
 
 RSpec::Core::RakeTask.new do |t|
   t.rspec_opts = "-c"
-  t.pattern = FileList['spec/**/*_spec.rb']
+  t.pattern = FileList['spec/*_spec.rb']
+end
+
+namespace :spec do  
+  desc "Runs online tests against Kyoto Tycoon"
+  RSpec::Core::RakeTask.new(:online) do |t|
+    t.rspec_opts = "-c"
+    t.pattern = FileList['spec/online/**/*_spec.rb']
+  end
 end
 
 require 'rake/rdoctask'
