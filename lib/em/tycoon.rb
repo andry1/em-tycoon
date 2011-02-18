@@ -29,8 +29,9 @@ module EM
     
       def receive_data(data)
         bytes_parsed = 0
-        while bytes_parsed < data.bytesize
+        while @jobs.any? && (bytes_parsed < data.bytesize)
           bytes_parsed += @jobs.first.parse_chunk(data[bytes_parsed..-1])
+          @jobs.shift if @jobs.first.message.parsed?
         end
       end
       
@@ -48,38 +49,35 @@ module EM
       # by Kyoto Tycoon.  If no callback is specified, the no-reply option will be passed to Kyoto Tycoon
       def set(data={},&cb)
         msg = Protocol::Message.generate(:set, data, {:no_reply => !(block_given?)})
-        send_data(msg)
         if block_given?
           job = Protocol::Parser.new(REQUEST_TIMEOUT)
-          job.callback {
-            cb.call(@jobs.shift.result) if block_given?
+          job.callback { |result|
+            cb.call(result) if block_given?
           }
-          job.errback {
-            @jobs.shift
+          job.errback { |result|
             cb.call(nil) if block_given?
           }
           @jobs << job
+          send_data(msg)
         end
       end
       
       def get(keys=[],&cb)
         raise ArgumentError.new("No block given") unless block_given?
         msg = Protocol::Message.generate(:get, keys)
-        send_data(msg)
         job = Protocol::Parser.new(REQUEST_TIMEOUT)
-        job.callback {
-          cb.call(@jobs.shift.result) if block_given?
+        job.callback { |result|
+          cb.call(result) if block_given?
         }
-        job.errback {
-          @jobs.shift
+        job.errback { |result|
           cb.call(nil) if block_given?
         }
-        @jobs << Protocol::Parser.new(REQUEST_TIMEOUT)
+        @jobs << job
+        send_data(msg)
       end
       
       def remove(keys=[],&cb)
         msg = Protocol::Message.generate(:remove, keys)
-        send_data(msg)
         if block_given?
           job = Protocol::Parser.new(REQUEST_TIMEOUT)
           job.callback {
@@ -90,6 +88,7 @@ module EM
             cb.call(nil) if block_given?
           }
           @jobs << job
+          send_data(msg)
         end
       end
       

@@ -17,6 +17,9 @@ module EM
         }
         NO_EXPIRATION_TIME = 0x7FFFFFFFFFFFFFFF
         PARSE_PHASES=[:magic,:item_count]
+        NO_XT_HEX="7#{'F'*15}"
+        KV_PACK_FMT="nNNH*a*a*"
+  
         attr_reader :bytes_expected,:parsed,:buffer,:parse_phase
         # The human-readable symbol version of the KT message type, as defined in the keys of Message::MAGIC
         attr_accessor :type
@@ -67,6 +70,7 @@ module EM
           else
             @buffer << data[0..@bytes_expected]
             bytes_parsed = parse_chunk(@buffer)
+            return 0 if bytes_parsed == 0 # This is an error
             @bytes_expected -= bytes_parsed
             @buffer = String.new
             if @bytes_expected == 0
@@ -82,8 +86,8 @@ module EM
         # of bytes parsed.  Default implementation supports standard magic+hits or just magic (in case of error message)
         # messages     
         def parse_chunk(data)
-          return nil if data.nil?
-          return nil unless data.bytesize == @bytes_expected
+          return 0 if data.nil?
+          return 0 unless data.bytesize == @bytes_expected
           bytes_parsed = 0
           if @bytes_expected > 1
             @magic,@item_count = data.unpack("CN")
@@ -92,6 +96,7 @@ module EM
             @magic = data.unpack("C").first
             bytes_parsed = 1
           end
+          @data = @item_count
           @parse_phase = :item_count
           return bytes_parsed
         end

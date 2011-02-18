@@ -14,29 +14,35 @@ describe "Kyoto Tycoon Messages" do
     @multiple_get_keys = @multiple_set_hsh.keys
     @single_set_keysize = @single_set_hsh.keys.first.bytesize
     @single_set_valuesize = @single_set_hsh.values.first.bytesize
-    @multiple_set_keysize = 0
-    @multiple_set_valuesize = 0
+    @multiple_set_packed = [0xB8, 0, 3]
+    @get_bulk_reply = [0xBA, 3]
     @multiple_set_hsh.each_pair do |k,v|
-      @multiple_set_keysize += k.bytesize
-      @multiple_set_valuesize += v.bytesize
+      [@multiple_set_packed,@get_bulk_reply].each do |a|
+        a << 0
+        a << k.bytesize
+        a << v.bytesize
+        a << EM::Tycoon::Protocol::Message::NO_XT_HEX
+        a << k
+        a << v
+      end
     end
+    # XTs of "none" coming back in response are not 0x7FF...
+    @get_bulk_reply.collect! {|x| (x == EM::Tycoon::Protocol::Message::NO_XT_HEX) ? "000000ffffffffff" : x}
+    @multiple_set_packed = @multiple_set_packed.pack("CNN#{EM::Tycoon::Protocol::Message::KV_PACK_FMT*@multiple_set_hsh.keys.length}")
+    @multiple_get_packed = [0xBA, 0, 3, 
+                            0, "mykey1".bytesize, "mykey1",
+                            0, "my_longer_key2".bytesize, "my_longer_key2",
+                            0, "mykey3".bytesize, "mykey3"].pack("CNN"+("nNa*"*3))
     @single_set_packed = [0xB8, 0, 1, 0,
                           @single_set_keysize, @single_set_valuesize, "7#{'F'*15}",
                           @single_set_hsh.keys.first, @single_set_hsh.values.first].pack("CNNnNNH*a*a*")
-    @multiple_set_packed = [0xB8, 0, 3, 0, 0, 0,
-                            @multiple_set_keysize, @multiple_set_valuesize, ["7#{'F'*15}"]*@multiple_set_hsh.length,
-                            @multiple_set_hsh.keys, @multiple_set_hsh.values].flatten.pack("CNNnnnNNH*H*H*#{'a*'*(@multiple_set_hsh.length*2)}")
     @single_get_packed = [0xBA, 0, 1, 0, "mykey".bytesize, "mykey"].pack("CNNnNa*")
-    @multiple_get_packed = [0xBA, 0, 3, [0]*3, "mykey1".bytesize, "my_longer_key2".bytesize, "mykey3".bytesize,
-                            "mykey1", "my_longer_key2", "mykey3"].flatten.pack("CNNnnnNNNa*a*a*")
+    
     @single_remove_packed = [0xB9, 0, 1, 0, "mykey".bytesize, "mykey"].pack("CNNnNa*")
     @multiple_remove_packed = [0xB9, 0, 3, [0]*3, "mykey1".bytesize, "my_longer_key2".bytesize, "mykey3".bytesize,
                             "mykey1", "my_longer_key2", "mykey3"].flatten.pack("CNNnnnNNNa*a*a*")
+    @get_bulk_reply = @get_bulk_reply.pack("CN#{EM::Tycoon::Protocol::Message::KV_PACK_FMT*@multiple_set_hsh.keys.length}")
     @set_bulk_reply = [0xB8, 2].pack("CN")
-    @get_bulk_reply = [0xBA, 3, 0, 0, 0, "mykey1".bytesize, "my_longer_key2".bytesize, "mykey3".bytesize,
-                       @multiple_set_hsh["mykey1"].bytesize, @multiple_set_hsh["my_longer_key2"].bytesize, @multiple_set_hsh["mykey3"].bytesize,
-                       ["7#{'F'*15}"]*3, "mykey1", "my_longer_key2", "mykey3",
-                       @multiple_set_hsh["mykey1"], @multiple_set_hsh["my_longer_key2"], @multiple_set_hsh["mykey3"]].flatten.pack("CNnnnNNNNNNH*H*H*a*a*a*a*a*a*")
     @remove_bulk_reply = [0xB9, 4].pack("CN")
   end
   

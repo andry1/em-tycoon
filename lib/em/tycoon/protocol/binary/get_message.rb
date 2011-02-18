@@ -10,25 +10,31 @@ module EM
             8   # (int64_t): (iteration): the expiration time.
           )
           PARSE_PHASES=EM::Tycoon::Protocol::Message::PARSE_PHASES+[:header,:keys_and_values]
-          HEADER_UNPACK_FORMATS=%w(n N N)
-          
+          HEADER_UNPACK_FORMAT="nNNH16"
+          # Best I can figure it, Mikio is passing in 63 bits of 1s in set_bulk messages inside
+          # his own utilities to force KT to detect an overflow of the _real_ max XT time (which is 40 bits of 1s)
+          # and then returns that real max XT time in the get_bulk reply... I think
+          NO_EXPIRATION_TIME_RESPONSE=0x000000ffffffffff
           def initialize(data={},opts={})
             super(:get,data)
             @key_fmt = String.new
             @value_fmt = String.new
             @xts = Array.new
             @db_idxs = Array.new
+            @keys_parsed = 0
+            @keysize = 0
+            @valuesize = 0
+            @dbidx = 0
+            @xt = 0
           end
           
           def self.generate(data,opts={})
             data = [data.to_s] unless data.kind_of?(Array)
             msg_array = [MAGIC[:get], 0, data.length]
-            msg_array += ([0]*data.length)
-            key_sizes = []
-            keys = data.collect {|k| key_sizes << k.to_s.bytesize; k.to_s}
-            msg_array += key_sizes
-            msg_array += keys
-            return msg_array.pack("CNN#{'n'*data.length}#{'N'*data.length}#{'a*'*data.length}")
+            data.each {|k|
+              msg_array += [0, k.bytesize, k]
+            }
+            return msg_array.pack("CNN#{'nNa*'*data.length}")
           end
 
           def parse_chunk(data)
@@ -39,42 +45,33 @@ module EM
             when :magic,:item_count
               @magic, @item_count = data.unpack("CN")
               @parse_phase = :header
-              @bytes_expected += HEADER_BYTES_PER_RECORD*item_count
+              @bytes_expected += HEADER_BYTES_PER_RECORD
               bytes_parsed = 5
+              @data = Hash.new
             when :header
-              unpack_fmt = HEADER_UNPACK_FORMATS.inject("") {|fmt,part| fmt << "#{part}#{item_count}"}
-              unpack_fmt << "H16"*item_count
-              header = data.unpack(unpack_fmt)
-              @db_idxs = []
-              @xts = []
-              @key_sizes = []
-              @value_sizes = []
-              key_fmt = String.new
-              value_fmt = String.new
-              item_count.times do |x|
-                @db_idxs << header[x]
-                @key_sizes << header[x+item_count]
-                @value_sizes << header[x+(item_count*2)]
-                @xts << header[x+(item_count*3)].to_i(16)
-                @key_fmt << "a#{@key_sizes.last}"
-                @value_fmt << "a#{@value_sizes.last}"
-              end
-              @bytes_expected += (keysize+valuesize)
-              bytes_parsed = (item_count*HEADER_BYTES_PER_RECORD)
+              @dbidx,@keysize,@valuesize,@xt = data.unpack(HEADER_UNPACK_FORMAT)
+              @xt = @xt.to_i(16)
+              @bytes_expected += (@keysize+@valuesize)
+              bytes_parsed = HEADER_BYTES_PER_RECORD
               @parse_phase = :keys_and_values
             when :keys_and_values
-              keys_and_values = data.unpack(@key_fmt+@value_fmt)
-              @data = {}
-              item_count.times do |x|
-                xt = @xts.shift
-                @data[keys_and_values[x]] = {
-                  :dbidx => @db_idxs.shift,
-                  :value => keys_and_values[x+item_count],
-                  :xt => (xt == NO_EXPIRATION_TIME) ? nil : Time.at(xt)
-                }
+              k,v = data.unpack("a#{@keysize}a#{@valuesize}")
+              @data[k] = {
+                :value => v,
+                :dbidx => @dbidx,
+                :xt => (@xt == NO_EXPIRATION_TIME_RESPONSE) ? nil : Time.at(@xt)
+              }
+              bytes_parsed = (@keysize+@valuesize)
+              @keysize = 0
+              @valuesize = 0
+              @dbidx = 0
+              @xt = nil
+              if (@keys_parsed+=1) == item_count
+                @parse_phase = :done
+              else
+                @parse_phase = :header
+                @bytes_expected += HEADER_BYTES_PER_RECORD
               end
-              bytes_parsed = (keysize+valuesize)
-              @parse_phase = :done
             end
             return bytes_parsed
           end
