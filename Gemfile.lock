@@ -4,23 +4,27 @@ GIT
   specs:
     em-spec (0.2.2)
 
+PATH
+  remote: .
+  specs:
+    em-tycoon (0.0.1)
+      eventmachine
+
 GEM
   remote: http://rubygems.org/
   specs:
     child-process-manager (0.0.3)
     diff-lcs (1.1.2)
     eventmachine (0.12.10)
-    mocha (0.9.10)
-      rake
-    rake (0.8.7)
-    rspec (2.4.0)
-      rspec-core (~> 2.4.0)
-      rspec-expectations (~> 2.4.0)
-      rspec-mocks (~> 2.4.0)
-    rspec-core (2.4.0)
-    rspec-expectations (2.4.0)
+    mocha (0.9.12)
+    rspec (2.5.0)
+      rspec-core (~> 2.5.0)
+      rspec-expectations (~> 2.5.0)
+      rspec-mocks (~> 2.5.0)
+    rspec-core (2.5.2)
+    rspec-expectations (2.5.0)
       diff-lcs (~> 1.1.2)
-    rspec-mocks (2.4.0)
+    rspec-mocks (2.5.0)
 
 PLATFORMS
   ruby
@@ -28,6 +32,6 @@ PLATFORMS
 DEPENDENCIES
   child-process-manager
   em-spec!
-  eventmachine
+  em-tycoon!
   mocha
   rspec
