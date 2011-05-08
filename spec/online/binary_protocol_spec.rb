@@ -3,6 +3,16 @@ require File.expand_path('../../spec_helper.rb', __FILE__)
 describe "Binary Protocol" do
   include EM::Spec
   
+  before(:all) do
+    ChildProcessManager.spawn({:cmd => "ktserver -host #{KT_OPTS[:host]} -port #{KT_OPTS[:port]} ':#ktcapsiz=16m'",
+                               :port => KT_OPTS[:port]})
+    done
+  end
+  
+  after(:all) do
+    ChildProcessManager.reap_all
+    done
+  end
   it "Should support get and set operations with single KV pairs" do
     client = EM::Tycoon.connect(KT_OPTS)
     client.should be

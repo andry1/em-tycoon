@@ -7,6 +7,7 @@ GIT
 GEM
   remote: http://rubygems.org/
   specs:
+    child-process-manager (0.0.3)
     diff-lcs (1.1.2)
     eventmachine (0.12.10)
     mocha (0.9.10)
@@ -25,6 +26,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  child-process-manager
   em-spec!
   eventmachine
   mocha
