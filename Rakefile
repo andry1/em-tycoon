@@ -28,8 +28,8 @@ require 'rake/rdoctask'
 
 desc 'Generates RDOC'
 Rake::RDocTask.new do |rd|
-  rd.main = 'README'
-  rd.rdoc_files.include("README", "lib/**/*.rb")
+  rd.main = 'README.rdoc'
+  rd.rdoc_files.include("README.rdoc", "lib/**/*.rb")
 
   rd.options += [
     '-SHN',

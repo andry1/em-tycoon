@@ -1,0 +1,38 @@
+= em_tycoon
+
+An async client for Kyoto Tycoon (http://fallabs.com/kyototycoon/) using EventMachine
+
+== Overview
+
+em_tycoon uses Kyoto Tycoon's binary protocol (see http://fallabs.com/kyototycoon/spex.html#protocol) for increased efficiency, it does not currently implement any of the commands available outside of that protocol.  This means you are currently limited to:
+
+* get_bulk
+* set_bulk
+* remove_bulk
+* play_script
+
+== Quick start
+
+	require 'em-tycoon'
+	
+	EM.run do
+		tycoon = EM::Tycoon.connect(:host => 'localhost', :port => 1978)
+		# The second key will expire after 24 hours
+		tycoon.set("key1" => "value1", "key_with_xt" => {:value => "value2", :xt => (Time.now+86400)}) do |set_result| 
+			unless set_result.nil?
+				puts "Set #{set_result} keys"
+				tycoon.get("key1","key_with_xt") do |get_result|
+					get_result.each_pair do |key,value|
+						puts "Got #{key} = #{value[:value]} with expiration time : #{value[:xt] || 'None'}"
+					end
+				end
+			else
+				puts "Error!"
+			end
+		end
+	end
+
+== Copyright
+
+Copyright (c) 2011 Chris Ingrassia. See LICENSE for details.
+
