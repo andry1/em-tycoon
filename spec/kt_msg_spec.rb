@@ -15,8 +15,16 @@ describe "Kyoto Tycoon Messages" do
     @single_set_keysize = @single_set_hsh.keys.first.bytesize
     @single_set_valuesize = @single_set_hsh.values.first.bytesize
     @multiple_set_packed = [0xB8, 0, 3]
+    @play_script_packed = [0xB4, 0, "myscript".bytesize, @multiple_set_hsh.keys.length, "myscript"]
+    @play_script_reply = [0xB4, 3]
     @get_bulk_reply = [0xBA, 3]
     @multiple_set_hsh.each_pair do |k,v|
+      [@play_script_packed,@play_script_reply].each do |a|
+        a << k.bytesize
+        a << v.bytesize
+        a << k
+        a << v
+      end
       [@multiple_set_packed,@get_bulk_reply].each do |a|
         a << 0
         a << k.bytesize
@@ -46,6 +54,8 @@ describe "Kyoto Tycoon Messages" do
     @get_bulk_reply = @get_bulk_reply.pack("CN#{EM::Tycoon::Protocol::Message::KV_PACK_FMT*@multiple_set_hsh.keys.length}")
     @set_bulk_reply = [0xB8, 2].pack("CN")
     @remove_bulk_reply = [0xB9, 4].pack("CN")
+    @play_script_packed = @play_script_packed.pack("CNNNa*"+EM::Tycoon::Protocol::Binary::PlayScriptMessage::KV_PACK_FMT*@multiple_set_hsh.keys.length)
+    @play_script_reply = @play_script_reply.pack("CN#{EM::Tycoon::Protocol::Binary::PlayScriptMessage::KV_PACK_FMT*@multiple_set_hsh.keys.length}")
   end
   
   it "Should generate a set_bulk message properly with one key/value pair" do
@@ -108,7 +118,20 @@ describe "Kyoto Tycoon Messages" do
     msg.item_count.should == 4
   end
   
-  it "Should parse an error reply properly" do
+  it "Should generate a play_script message properly" do
+    msg = EM::Tycoon::Protocol::Message.generate(:play_script, ["myscript", @multiple_set_hsh])
+    msg.should == @play_script_packed
   end
   
+  it "Should parse a play_script reply propery" do
+    msg = EM::Tycoon::Protocol::Message.message_for(@play_script_reply)
+    bytes_parsed = msg.parse(@play_script_reply)
+    bytes_parsed.should == @play_script_reply.bytesize
+    msg.item_count.should be_kind_of(Integer)
+    msg.item_count.should == 3
+    @multiple_set_hsh.each_pair do |k,v|
+      msg[k].should be_kind_of(Hash)
+      msg[k][:value].should == v
+    end
+  end
 end

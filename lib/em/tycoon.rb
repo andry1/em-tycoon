@@ -91,6 +91,21 @@ module EM
         end
       end
       
+      def play_script(script_name, args={}, &cb)
+        msg = Protocol::Message.generate(:play_script, [script_name,args])
+        if block_given?
+          job = Protocol::Parser.new(REQUEST_TIMEOUT)
+          job.callback { |result|
+            cb.call(result) if block_given?
+          }
+          job.errback { |result|
+            cb.call(nil) if block_given?
+          }
+          @jobs << job
+          send_data(msg)
+        end
+      end
+      
     end
     
   end

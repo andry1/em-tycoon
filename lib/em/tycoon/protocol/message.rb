@@ -8,6 +8,7 @@ module EM
         MAGIC={:set => 0xB8,
                :get => 0xBA,
                :remove => 0xB9,
+               :play_script => 0xB4,
                :replication => 0xB1,
                :error => 0xBF}
         MSG_TYPES=MAGIC.invert
@@ -115,7 +116,8 @@ module EM
           def message_for(data)
             msgtype = msg_type_for(data)
             raise ArgumentError.new("Unknown magic byte 0x#{('%02X' % data[0])}") unless msgtype
-            Binary.const_get("#{msgtype.to_s.capitalize}Message").new(data)
+            classname = msgtype.to_s.gsub(/^[a-z]|_[a-z]/) {|c| c.upcase}.gsub('_','') + "Message"
+            Binary.const_get(classname).new(data)
           end
           
           def msg_type_for(data)
@@ -126,7 +128,8 @@ module EM
           def generate(type, data, opts={})
             check_msg_type(type)
             opts=DEFAULT_OPTS.merge(opts)
-            Binary.const_get("#{type.to_s.capitalize}Message").generate(data,opts)
+            classname = type.to_s.gsub(/^[a-z]|_[a-z]/) {|c| c.upcase}.gsub('_','') + "Message"
+            Binary.const_get(classname).generate(data,opts)
           end
         
           def check_msg_type(type)

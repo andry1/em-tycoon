@@ -4,7 +4,7 @@ describe "Binary Protocol" do
   include EM::Spec
   
   before(:all) do
-    ChildProcessManager.spawn({:cmd => "ktserver -host #{KT_OPTS[:host]} -port #{KT_OPTS[:port]} -log #{File.dirname(__FILE__)}/../log/ktserver.log -li ':#ktcapsiz=16m'",
+    ChildProcessManager.spawn({:cmd => "ktserver -host #{KT_OPTS[:host]} -port #{KT_OPTS[:port]} -scr #{File.dirname(__FILE__)}/../testscript.lua -log #{File.dirname(__FILE__)}/../log/ktserver.log -li ':#ktcapsiz=16m'",
                                :port => KT_OPTS[:port]})
     done
   end
@@ -13,6 +13,7 @@ describe "Binary Protocol" do
     ChildProcessManager.reap_all
     done
   end
+  
   it "Should support get and set operations with single KV pairs" do
     client = EM::Tycoon.connect(KT_OPTS)
     client.should be
@@ -50,6 +51,19 @@ describe "Binary Protocol" do
           }
         }
       }
+  end
+
+  it "Should support the play_script command" do
+    client = EM::Tycoon.connect(KT_OPTS)
+    client.should be
+    args = {"arg1" => "value1", "arg2" => "value2", "arg3" => "value3"}
+    client.play_script("testscript", args) { |result|
+      result.should be_kind_of(Hash)
+      args.each_pair do |k,v|
+        result[k][:value].should == args[k]
+      end
+      done
+    }
   end
 
 end
