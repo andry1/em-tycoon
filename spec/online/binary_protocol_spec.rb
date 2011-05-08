@@ -4,7 +4,7 @@ describe "Binary Protocol" do
   include EM::Spec
   
   before(:all) do
-    ChildProcessManager.spawn({:cmd => "ktserver -host #{KT_OPTS[:host]} -port #{KT_OPTS[:port]} ':#ktcapsiz=16m'",
+    ChildProcessManager.spawn({:cmd => "ktserver -host #{KT_OPTS[:host]} -port #{KT_OPTS[:port]} -log #{File.dirname(__FILE__)}/../log/ktserver.log -li ':#ktcapsiz=16m'",
                                :port => KT_OPTS[:port]})
     done
   end
